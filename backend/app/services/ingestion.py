@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -11,17 +13,20 @@ from app.services.url_fetcher import fetch_url_text
 logger = get_logger(__name__)
 
 
-def ingest_note(db: Session, content: str) -> Item:
-    return _ingest(db, source_type=SourceType.note, content=content.strip(), source_ref=None)
+def ingest_note(db: Session, user_id: uuid.UUID, content: str) -> Item:
+    return _ingest(db, user_id, source_type=SourceType.note, content=content.strip(), source_ref=None)
 
 
-def ingest_url(db: Session, url: str) -> Item:
+def ingest_url(db: Session, user_id: uuid.UUID, url: str) -> Item:
     content = fetch_url_text(url)
-    return _ingest(db, source_type=SourceType.url, content=content, source_ref=url)
+    return _ingest(db, user_id, source_type=SourceType.url, content=content, source_ref=url)
 
 
-def _ingest(db: Session, source_type: SourceType, content: str, source_ref: str | None) -> Item:
+def _ingest(
+    db: Session, user_id: uuid.UUID, source_type: SourceType, content: str, source_ref: str | None
+) -> Item:
     item = Item(
+        user_id=user_id,
         source_type=source_type,
         content=content,
         source_ref=source_ref,
@@ -50,7 +55,8 @@ def _ingest(db: Session, source_type: SourceType, content: str, source_ref: str 
         "item ingested",
         extra={
             "extra_fields": {
-                "item_id": item.id,
+                "item_id": str(item.id),
+                "user_id": str(user_id),
                 "source_type": source_type.value,
                 "chunk_count": len(pieces),
             }

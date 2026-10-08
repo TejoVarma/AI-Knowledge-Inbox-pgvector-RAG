@@ -29,8 +29,10 @@ class User(Base):
 class Item(Base):
     __tablename__ = "items"
     __table_args__ = (
+        # a url is unique per user, so two people can both save the same page
         Index(
-            "uq_items_source_ref_when_url",
+            "uq_items_user_source_ref_when_url",
+            "user_id",
             "source_ref",
             unique=True,
             postgresql_where=(text("source_type = 'url'")),
@@ -38,6 +40,9 @@ class Item(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     source_type: Mapped[SourceType] = mapped_column(Enum(SourceType), nullable=False)
     source_ref: Mapped[str | None] = mapped_column(String, nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
