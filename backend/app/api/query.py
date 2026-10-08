@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.logging import get_logger
 from app.db.database import get_db
+from app.db.models import User
 from app.schemas.query import QueryRequest, QueryResponse, SourceSnippet
 from app.services.answering import generate_answer
 from app.services.retrieval import retrieve_top_chunks
@@ -12,9 +14,13 @@ logger = get_logger(__name__)
 
 
 @router.post("/query", response_model=QueryResponse)
-def query(payload: QueryRequest, db: Session = Depends(get_db)) -> QueryResponse:
+def query(
+    payload: QueryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QueryResponse:
     try:
-        top_chunks = retrieve_top_chunks(db, payload.question)
+        top_chunks = retrieve_top_chunks(db, payload.question, current_user.id)
         answer = generate_answer(payload.question, top_chunks)
     except Exception as exc:
         logger.exception("query failed unexpectedly")

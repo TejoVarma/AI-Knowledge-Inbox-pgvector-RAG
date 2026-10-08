@@ -1,12 +1,14 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.logging import get_logger
 from app.db.database import get_db
-from app.db.models import Item, SourceType
+from app.db.models import Item, SourceType, User
 from app.schemas.items import IngestRequest, ItemResponse
 from app.services import ingestion
 from app.services.url_fetcher import UrlFetchError
@@ -16,12 +18,16 @@ logger = get_logger(__name__)
 
 
 @router.post("/ingest", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
-def ingest_item(payload: IngestRequest, db: Session = Depends(get_db)) -> ItemResponse:
+def ingest_item(
+    payload: IngestRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ItemResponse:
     try:
         if payload.source_type == SourceType.note:
-            item = ingestion.ingest_note(db, content=payload.content)  # type: ignore[arg-type]
+            item = ingestion.ingest_note(db, current_user.id, content=payload.content)  # type: ignore[arg-type]
         else:
-            item = ingestion.ingest_url(db, url=payload.url)  # type: ignore[arg-type]
+            item = ingestion.ingest_url(db, current_user.id, url=payload.url)  # type: ignore[arg-type]
     except UrlFetchError as exc:
         db.rollback()
         logger.warning("url ingestion failed", extra={"extra_fields": {"url": payload.url, "error": str(exc)}})
@@ -41,20 +47,29 @@ def ingest_item(payload: IngestRequest, db: Session = Depends(get_db)) -> ItemRe
 
 
 @router.get("/items", response_model=list[ItemResponse])
-def list_items(db: Session = Depends(get_db)) -> list[ItemResponse]:
-    items = db.query(Item).order_by(Item.created_at.desc()).all()
+def list_items(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> list[ItemResponse]:
+    items = db.scalars(
+        select(Item).where(Item.user_id == current_user.id).order_by(Item.created_at.desc())
+    ).all()
     return [_to_response(item) for item in items]
 
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
-    item = db.query(Item).filter(Item.id == item_id).first()
+def delete_item(
+    item_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    # someone else's item gets the same 404 as a missing one - a 403 would confirm it exists
+    item = db.scalar(select(Item).where(Item.id == item_id, Item.user_id == current_user.id))
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="item not found")
 
     db.delete(item)
     db.commit()
-    logger.info("item deleted", extra={"extra_fields": {"item_id": item_id}})
+    logger.info("item deleted", extra={"extra_fields": {"item_id": str(item_id)}})
 
 
 def _to_response(item: Item) -> ItemResponse:

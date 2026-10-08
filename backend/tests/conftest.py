@@ -55,8 +55,27 @@ def clean_tables():
         conn.execute(text("TRUNCATE users, items, chunks CASCADE"))
 
 
+def _logged_in_client(email: str) -> TestClient:
+    c = TestClient(app)
+    credentials = {"email": email, "password": "long-enough-pw"}
+    c.post("/auth/register", json=credentials)
+    token = c.post("/auth/login", json=credentials).json()["access_token"]
+    c.headers["Authorization"] = f"Bearer {token}"
+    return c
+
+
 @pytest.fixture()
 def client():
+    return _logged_in_client("owner@example.com")
+
+
+@pytest.fixture()
+def other_client():
+    return _logged_in_client("intruder@example.com")
+
+
+@pytest.fixture()
+def anon_client():
     return TestClient(app)
 
 

@@ -3,11 +3,18 @@ import uuid
 from datetime import timedelta
 
 import jwt
+import pytest
 from sqlalchemy import delete, select
 
 from app.core.security import create_access_token, verify_password
 from app.db.database import SessionLocal
 from app.db.models import User
+
+
+# auth tests register and log in by hand, so they start from a client with no token
+@pytest.fixture()
+def client(anon_client):
+    return anon_client
 
 
 def register(client, email="tejo@example.com", password="correct-horse-9"):
