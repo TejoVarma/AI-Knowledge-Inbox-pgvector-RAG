@@ -14,5 +14,17 @@ services:
       interval: 5s
       retries: 10
 
+  api:
+    build: ./backend
+    # later files win, so a DATABASE_URL in backend/.env overrides the local db
+    env_file:
+      - backend/compose.env
+      - backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:
