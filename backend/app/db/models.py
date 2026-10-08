@@ -1,8 +1,9 @@
 import enum
+import uuid
 from datetime import datetime, timezone
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.config import settings
@@ -25,7 +26,7 @@ class Item(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     source_type: Mapped[SourceType] = mapped_column(Enum(SourceType), nullable=False)
     source_ref: Mapped[str | None] = mapped_column(String, nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -51,8 +52,8 @@ class Chunk(Base):
         ),
     )
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    item_id: Mapped[int] = mapped_column(
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    item_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("items.id", ondelete="CASCADE"), nullable=False
     )
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
