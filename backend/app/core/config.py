@@ -6,6 +6,9 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:dev@localhost:5433/inbox"
     openai_api_key: str
+    # no default on purpose: a guessable fallback secret would let anyone forge tokens
+    jwt_secret: str
+    jwt_expire_minutes: int = 60
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
     chat_model: str = "gpt-4o-mini"
