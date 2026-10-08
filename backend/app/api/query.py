@@ -1,0 +1,40 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.logging import get_logger
+from app.db.database import get_db
+from app.schemas.query import QueryRequest, QueryResponse, SourceSnippet
+from app.services.answering import generate_answer
+from app.services.retrieval import retrieve_top_chunks
+
+router = APIRouter()
+logger = get_logger(__name__)
+
+
+@router.post("/query", response_model=QueryResponse)
+def query(payload: QueryRequest, db: Session = Depends(get_db)) -> QueryResponse:
+    try:
+        top_chunks = retrieve_top_chunks(db, payload.question)
+        answer = generate_answer(payload.question, top_chunks)
+    except Exception as exc:
+        logger.exception("query failed unexpectedly")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="failed to answer question") from exc
+
+    logger.info(
+        "query answered",
+        extra={"extra_fields": {"question_len": len(payload.question), "chunks_used": len(top_chunks)}},
+    )
+
+    return QueryResponse(
+        answer=answer,
+        sources=[
+            SourceSnippet(
+                item_id=r.item.id,
+                source_type=r.item.source_type.value,
+                source_ref=r.item.source_ref,
+                chunk_text=r.chunk.text,
+                similarity=round(r.similarity, 4),
+            )
+            for r in top_chunks
+        ],
+    )
