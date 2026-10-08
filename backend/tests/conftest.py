@@ -7,6 +7,7 @@ TEST_DATABASE_URL = os.environ.get(
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
+os.environ.setdefault("JWT_SECRET", "test-secret-not-used-anywhere-real")
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
