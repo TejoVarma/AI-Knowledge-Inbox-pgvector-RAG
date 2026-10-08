@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import items, query
 from app.core.logging import configure_logging, get_logger
-from app.db.database import init_db
 
 configure_logging()
 logger = get_logger(__name__)
@@ -19,12 +18,6 @@ app.add_middleware(
 
 app.include_router(items.router, tags=["items"])
 app.include_router(query.router, tags=["query"])
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-    logger.info("app startup complete")
 
 
 @app.get("/health")
