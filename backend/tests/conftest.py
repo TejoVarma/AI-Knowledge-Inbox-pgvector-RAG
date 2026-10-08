@@ -51,7 +51,7 @@ def test_database():
 def clean_tables():
     yield
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE items, chunks CASCADE"))
+        conn.execute(text("TRUNCATE users, items, chunks CASCADE"))
 
 
 @pytest.fixture()
