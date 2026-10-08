@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str
+    database_url: str = "postgresql+psycopg://postgres:dev@localhost:5433/inbox"
     openai_api_key: str
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
