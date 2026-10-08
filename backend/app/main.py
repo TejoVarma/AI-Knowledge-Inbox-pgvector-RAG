@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import items, query
+from app.api import auth, items, query
 from app.core.logging import configure_logging, get_logger
 
 configure_logging()
@@ -16,6 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, tags=["auth"])
 app.include_router(items.router, tags=["items"])
 app.include_router(query.router, tags=["query"])
 
