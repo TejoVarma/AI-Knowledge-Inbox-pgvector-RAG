@@ -70,28 +70,34 @@ def login(client, email="tejo@example.com", password="correct-horse-9"):
     return client.post("/auth/login", json={"email": email, "password": password})
 
 
+def get_token(client, email="tejo@example.com", password="correct-horse-9"):
+    return client.post("/auth/token", data={"username": email, "password": password})
+
+
 def auth_header(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_login_returns_bearer_token(client):
+def test_token_endpoint_returns_bearer_token(client):
     register(client)
-    resp = login(client)
+    resp = get_token(client)
     assert resp.status_code == 200
     data = resp.json()
     assert data["token_type"] == "bearer"
     assert data["access_token"].count(".") == 2  # header.payload.signature
 
 
-def test_login_email_is_case_insensitive(client):
+def test_login_email_is_case_insensitive_on_both_paths(client):
     register(client)
     assert login(client, email="TEJO@Example.com").status_code == 200
+    assert get_token(client, email="TEJO@Example.com").status_code == 200
 
 
-def test_wrong_password_and_unknown_email_look_identical(client):
+@pytest.mark.parametrize("attempt", [login, get_token])
+def test_wrong_password_and_unknown_email_look_identical(client, attempt):
     register(client)
-    wrong_password = login(client, password="not-my-password")
-    unknown_email = login(client, email="nobody@example.com")
+    wrong_password = attempt(client, password="not-my-password")
+    unknown_email = attempt(client, email="nobody@example.com")
 
     assert wrong_password.status_code == unknown_email.status_code == 401
     assert wrong_password.json() == unknown_email.json() == {"detail": "invalid email or password"}
@@ -99,7 +105,7 @@ def test_wrong_password_and_unknown_email_look_identical(client):
 
 def test_me_returns_current_user(client):
     register(client)
-    token = login(client).json()["access_token"]
+    token = get_token(client).json()["access_token"]
 
     resp = client.get("/auth/me", headers=auth_header(token))
     assert resp.status_code == 200
@@ -119,7 +125,7 @@ def test_me_with_garbage_token_is_401(client):
 def test_tampered_token_is_rejected(client):
     # swap in another user's id in the payload but keep the original signature
     register(client)
-    token = login(client).json()["access_token"]
+    token = get_token(client).json()["access_token"]
     header, _, signature = token.split(".")
     other_user_payload = jwt.utils.base64url_encode(
         json.dumps({"sub": str(uuid.uuid4()), "exp": 9999999999}).encode()
@@ -132,7 +138,7 @@ def test_tampered_token_is_rejected(client):
 def test_token_signed_with_another_secret_is_rejected(client):
     register(client)
     user_id = client.get(
-        "/auth/me", headers=auth_header(login(client).json()["access_token"])
+        "/auth/me", headers=auth_header(get_token(client).json()["access_token"])
     ).json()["id"]
     forged = jwt.encode({"sub": user_id, "exp": 9999999999}, "attacker-secret", algorithm="HS256")
     assert client.get("/auth/me", headers=auth_header(forged)).status_code == 401
@@ -141,7 +147,7 @@ def test_token_signed_with_another_secret_is_rejected(client):
 def test_expired_token_is_rejected(client):
     register(client)
     user_id = uuid.UUID(
-        client.get("/auth/me", headers=auth_header(login(client).json()["access_token"])).json()["id"]
+        client.get("/auth/me", headers=auth_header(get_token(client).json()["access_token"])).json()["id"]
     )
     expired = create_access_token(user_id, expires_in=timedelta(minutes=-1))
     assert client.get("/auth/me", headers=auth_header(expired)).status_code == 401
@@ -149,7 +155,7 @@ def test_expired_token_is_rejected(client):
 
 def test_token_for_deleted_user_is_rejected(client):
     register(client)
-    token = login(client).json()["access_token"]
+    token = get_token(client).json()["access_token"]
     with SessionLocal() as db:
         db.execute(delete(User))
         db.commit()
