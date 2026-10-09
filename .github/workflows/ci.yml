@@ -5,10 +5,11 @@ on:
   push:
     branches: [main]
 
-# a newer push to the same PR cancels the run that's still going
+# on a PR a newer push cancels the stale run; on main runs queue instead, so a
+# deploy is never cut off halfway through a migration
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -65,3 +66,42 @@ jobs:
 
       - name: Build backend image
         run: docker build -t ai-knowledge-inbox-api ./backend
+
+  migrate:
+    # only after a merge to main, and only once both checks have passed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [tests, docker-build]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
+      # alembic imports the app settings, which require these to exist
+      OPENAI_API_KEY: unused-by-migrations
+      JWT_SECRET: unused-by-migrations
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations on Neon
+        run: |
+          alembic upgrade head
+          alembic current
+
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK" > /dev/null
