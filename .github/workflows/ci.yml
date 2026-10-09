@@ -67,10 +67,41 @@ jobs:
       - name: Build backend image
         run: docker build -t ai-knowledge-inbox-api ./backend
 
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm first, so setup-node can find it and cache its store
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
   migrate:
-    # only after a merge to main, and only once both checks have passed
+    # only after a merge to main, and only once every check has passed
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [tests, docker-build]
+    needs: [tests, docker-build, frontend]
     runs-on: ubuntu-latest
     defaults:
       run:
