@@ -1,14 +1,39 @@
-import { useState } from "react";
-import { Inbox, NotebookPen, MessageSquare } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Inbox, NotebookPen, MessageSquare, LogOut } from "lucide-react";
 import { useInboxStore } from "./store/useInboxStore";
+import { useAuthStore } from "./store/useAuthStore";
 import { IngestForm } from "./components/IngestForm";
 import { ItemsList } from "./components/ItemsList";
 import { AskPanel } from "./components/AskPanel";
+import { AuthScreen } from "./components/AuthScreen";
+import { Spinner } from "./components/Spinner";
 
 type MobileTab = "save" | "ask";
 
 function App() {
+  const status = useAuthStore((s) => s.status);
+  const checkSession = useAuthStore((s) => s.checkSession);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  if (status === "checking") {
+    return (
+      <div className="h-screen flex items-center justify-center text-ink-muted">
+        <Spinner size={22} />
+      </div>
+    );
+  }
+
+  // the inbox only mounts once logged in, so it never asks for notes without a session
+  return status === "authenticated" ? <InboxScreen /> : <AuthScreen />;
+}
+
+function InboxScreen() {
   const itemCount = useInboxStore((s) => s.items.length);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const [mobileTab, setMobileTab] = useState<MobileTab>("save");
 
   return (
@@ -20,9 +45,21 @@ function App() {
           </span>
           <h1 className="font-display text-2xl font-semibold tracking-tight">Knowledge Inbox</h1>
         </div>
-        <span className="font-mono text-xs text-ink-muted bg-surface-sunken border border-border rounded-full px-3 py-1">
-          {itemCount} items saved
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="hidden sm:inline font-mono text-xs text-ink-muted bg-surface-sunken border border-border rounded-full px-3 py-1">
+            {itemCount} items saved
+          </span>
+          <span className="text-sm text-ink-muted">
+            Hi, <span className="font-semibold text-ink">{user?.name ?? user?.email}</span>
+          </span>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink border border-border rounded-md px-3 py-1.5 transition-colors"
+          >
+            <LogOut size={14} />
+            Log out
+          </button>
+        </div>
       </header>
 
       <div className="md:hidden flex-none flex border-b border-border">

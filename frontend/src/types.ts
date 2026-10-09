@@ -31,3 +31,10 @@ export interface ApiError {
   message: string;
   status?: number;
 }
+
+export interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  created_at: string;
+}

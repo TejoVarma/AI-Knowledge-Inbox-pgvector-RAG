@@ -17,8 +17,8 @@ def client(anon_client):
     return anon_client
 
 
-def register(client, email="tejo@example.com", password="correct-horse-9"):
-    return client.post("/auth/register", json={"email": email, "password": password})
+def register(client, email="tejo@example.com", password="correct-horse-9", name="Tejo"):
+    return client.post("/auth/register", json={"name": name, "email": email, "password": password})
 
 
 def test_register_creates_user(client):
@@ -26,6 +26,7 @@ def test_register_creates_user(client):
     assert resp.status_code == 201
     data = resp.json()
     assert data["email"] == "tejo@example.com"
+    assert data["name"] == "Tejo"
     assert "id" in data and "created_at" in data
 
 
@@ -60,6 +61,20 @@ def test_duplicate_email_rejected(client):
 
 def test_short_password_rejected(client):
     assert register(client, password="short").status_code == 422
+
+
+def test_name_is_required(client):
+    resp = client.post("/auth/register", json={"email": "tejo@example.com", "password": "correct-horse-9"})
+    assert resp.status_code == 422
+
+
+@pytest.mark.parametrize("name", ["", "   ", "x" * 101])
+def test_blank_or_too_long_name_rejected(client, name):
+    assert register(client, name=name).status_code == 422
+
+
+def test_name_is_trimmed(client):
+    assert register(client, name="  Tejo Varma  ").json()["name"] == "Tejo Varma"
 
 
 def test_invalid_email_rejected(client):
@@ -110,6 +125,7 @@ def test_me_returns_current_user(client):
     resp = client.get("/auth/me", headers=auth_header(token))
     assert resp.status_code == 200
     assert resp.json()["email"] == "tejo@example.com"
+    assert resp.json()["name"] == "Tejo"
 
 
 def test_me_without_token_is_401(client):

@@ -19,7 +19,7 @@ def csrf_header(c):
 
 def test_login_sets_both_cookies_with_safe_flags(anon_client):
     credentials = {"email": "flags@example.com", "password": "long-enough-pw"}
-    anon_client.post("/auth/register", json=credentials)
+    anon_client.post("/auth/register", json={"name": "Tejo", **credentials})
     resp = anon_client.post("/auth/login", json=credentials)
 
     assert resp.status_code == 200
@@ -41,7 +41,7 @@ def test_session_lasts_one_day():
 
 def test_login_body_never_contains_the_token(anon_client):
     credentials = {"email": "body@example.com", "password": "long-enough-pw"}
-    anon_client.post("/auth/register", json=credentials)
+    anon_client.post("/auth/register", json={"name": "Tejo", **credentials})
     data = anon_client.post("/auth/login", json=credentials).json()
 
     assert data["email"] == "body@example.com"

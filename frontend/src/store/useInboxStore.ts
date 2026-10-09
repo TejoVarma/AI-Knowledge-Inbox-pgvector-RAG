@@ -23,22 +23,27 @@ interface InboxState {
   clearSaveError: () => void;
   setQuestion: (question: string) => void;
   ask: () => Promise<void>;
+  reset: () => void;
 }
 
-export const useInboxStore = create<InboxState>((set, get) => ({
-  items: [],
+const initialState = {
+  items: [] as Item[],
   isLoadingItems: false,
-  itemsError: null,
-  deletingIds: [],
+  itemsError: null as string | null,
+  deletingIds: [] as string[],
 
   isSaving: false,
-  saveError: null,
+  saveError: null as string | null,
 
   question: "",
-  answer: null,
-  sources: [],
+  answer: null as string | null,
+  sources: [] as SourceSnippet[],
   isAsking: false,
-  askError: null,
+  askError: null as string | null,
+};
+
+export const useInboxStore = create<InboxState>((set, get) => ({
+  ...initialState,
 
   fetchItems: async () => {
     set({ isLoadingItems: true, itemsError: null });
@@ -96,4 +101,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
       set({ askError: (err as ApiError).message, isAsking: false });
     }
   },
+
+  // on logout: nothing from the previous person stays in memory for the next one
+  reset: () => set(initialState),
 }));

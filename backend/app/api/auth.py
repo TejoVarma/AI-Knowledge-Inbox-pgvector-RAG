@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
-    user = User(email=payload.email, password_hash=hash_password(payload.password))
+    user = User(name=payload.name, email=payload.email, password_hash=hash_password(payload.password))
     db.add(user)
     try:
         db.commit()
