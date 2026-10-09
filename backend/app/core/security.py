@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -14,6 +15,10 @@ _hasher = PasswordHasher(memory_cost=19456, time_cost=2, parallelism=1)
 _DUMMY_HASH = _hasher.hash("not-a-real-password")
 
 _ALGORITHM = "HS256"
+
+ACCESS_COOKIE = "access_token"
+CSRF_COOKIE = "csrf_token"
+CSRF_HEADER = "X-CSRF-Token"
 
 
 def hash_password(password: str) -> str:
@@ -43,3 +48,7 @@ def decode_access_token(token: str) -> uuid.UUID | None:
         return uuid.UUID(payload["sub"])
     except (jwt.InvalidTokenError, KeyError, ValueError):
         return None
+
+
+def create_csrf_token() -> str:
+    return secrets.token_urlsafe(32)

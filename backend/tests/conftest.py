@@ -8,6 +8,9 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
 os.environ.setdefault("JWT_SECRET", "test-secret-not-used-anywhere-real")
+# forced, not defaulted: a developer's .env (COOKIE_SECURE=false for local http) must not
+# change what the tests check
+os.environ["COOKIE_SECURE"] = "true"
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
@@ -55,11 +58,16 @@ def clean_tables():
         conn.execute(text("TRUNCATE users, items, chunks CASCADE"))
 
 
+def _new_client() -> TestClient:
+    # https, because browsers (and httpx) only send Secure cookies over https
+    return TestClient(app, base_url="https://testserver")
+
+
 def _logged_in_client(email: str) -> TestClient:
-    c = TestClient(app)
-    credentials = {"email": email, "password": "long-enough-pw"}
-    c.post("/auth/register", json=credentials)
-    token = c.post("/auth/login", json=credentials).json()["access_token"]
+    # bearer token via /auth/token - the tools path, no cookies or csrf involved
+    c = _new_client()
+    c.post("/auth/register", json={"email": email, "password": "long-enough-pw"})
+    token = c.post("/auth/token", data={"username": email, "password": "long-enough-pw"}).json()["access_token"]
     c.headers["Authorization"] = f"Bearer {token}"
     return c
 
@@ -76,7 +84,17 @@ def other_client():
 
 @pytest.fixture()
 def anon_client():
-    return TestClient(app)
+    return _new_client()
+
+
+@pytest.fixture()
+def browser_client():
+    # the website path: logs in with the cookie flow and keeps the cookies like a browser
+    c = _new_client()
+    credentials = {"email": "browser@example.com", "password": "long-enough-pw"}
+    c.post("/auth/register", json=credentials)
+    c.post("/auth/login", json=credentials)
+    return c
 
 
 @pytest.fixture(autouse=True)
