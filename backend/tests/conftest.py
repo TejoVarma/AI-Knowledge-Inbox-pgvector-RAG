@@ -66,7 +66,7 @@ def _new_client() -> TestClient:
 def _logged_in_client(email: str) -> TestClient:
     # bearer token via /auth/token - the tools path, no cookies or csrf involved
     c = _new_client()
-    c.post("/auth/register", json={"email": email, "password": "long-enough-pw"})
+    c.post("/auth/register", json={"name": "Test User", "email": email, "password": "long-enough-pw"})
     token = c.post("/auth/token", data={"username": email, "password": "long-enough-pw"}).json()["access_token"]
     c.headers["Authorization"] = f"Bearer {token}"
     return c
@@ -92,7 +92,7 @@ def browser_client():
     # the website path: logs in with the cookie flow and keeps the cookies like a browser
     c = _new_client()
     credentials = {"email": "browser@example.com", "password": "long-enough-pw"}
-    c.post("/auth/register", json=credentials)
+    c.post("/auth/register", json={"name": "Browser User", **credentials})
     c.post("/auth/login", json=credentials)
     return c
 

@@ -1,10 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, field_validator
+
+# trimmed first, then checked - so "   " counts as empty
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 class RegisterRequest(BaseModel):
+    name: Name
     email: EmailStr
     # argon2 has no length limit, the cap just stops someone posting a 10 MB "password"
     password: str = Field(min_length=8, max_length=128)
@@ -17,6 +22,7 @@ class RegisterRequest(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
+    name: str | None
     email: str
     created_at: datetime
 
