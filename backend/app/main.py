@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -27,4 +29,6 @@ app.include_router(query.router, tags=["query"])
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # render sets RENDER_GIT_COMMIT; the deploy pipeline waits for it to show the new commit
+    # before shipping the frontend
+    return {"status": "ok", "version": os.environ.get("RENDER_GIT_COMMIT", "local")}

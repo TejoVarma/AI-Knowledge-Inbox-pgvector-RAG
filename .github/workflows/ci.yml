@@ -203,11 +203,33 @@ jobs:
           alembic upgrade head
           alembic current
 
-  deploy:
+  deploy-backend:
     needs: migrate
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK" > /dev/null
+
+      # the hook only starts the build; wait until the live api reports this commit, so the
+      # frontend never goes out ahead of the backend it talks to
+      - name: Wait for the new backend to go live
+        run: |
+          for i in $(seq 1 60); do
+            live=$(curl --silent --max-time 20 https://ai-knowledge-inbox-pgvector-rag.onrender.com/health | python3 -c "import sys, json; print(json.load(sys.stdin).get('version', ''))" 2>/dev/null || true)
+            echo "attempt $i: live version '${live}'"
+            [ "$live" = "${{ github.sha }}" ] && exit 0
+            sleep 10
+          done
+          echo "backend didn't report ${{ github.sha }} within 10 minutes"
+          exit 1
+
+  deploy-frontend:
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: curl --fail --silent --show-error -X POST "$DEPLOY_HOOK" > /dev/null
