@@ -30,6 +30,7 @@ export interface QueryResponse {
 export interface ApiError {
   message: string;
   status?: number;
+  unreachable?: boolean;
 }
 
 export interface User {
