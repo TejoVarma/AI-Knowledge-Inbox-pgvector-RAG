@@ -243,13 +243,14 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on ev
 | `frontend` | typecheck, lint and build with the Node version from `.nvmrc` |
 | `e2e` | starts Postgres and the backend, builds the frontend, runs Playwright; uploads the report, traces and backend log if anything fails |
 | `migrate` | `main` only, after all four checks pass: `alembic upgrade head` on the production database |
-| `deploy` | `main` only, after `migrate`: triggers the Render deploy hook |
+| `deploy-backend` | triggers the Render deploy hook, then waits until the live `/health` reports this commit |
+| `deploy-frontend` | triggers the Vercel deploy hook |
 
-Migrations run before the new backend goes live, so new code never meets an old schema. Runs on `main` queue rather than cancel each other, so a deploy is never interrupted mid-migration. `main` is branch-protected: a pull request can't be merged until the four checks are green.
+The order is deliberate: migrations run before the new backend goes live, so new code never meets an old schema, and the frontend ships only once the backend it talks to is live. Runs on `main` queue rather than cancel each other, so a deploy is never interrupted mid-migration. `main` is branch-protected: a pull request can't be merged until the four checks are green.
 
-Vercel deploys the frontend from `main` through its own GitHub integration, and builds a preview URL for each pull request.
+Vercel's automatic deploys for `main` are switched off in `vercel.json`, so production only changes through the pipeline. It still builds a preview URL for every pull request.
 
-CI needs no real secrets: tests mock OpenAI and use throwaway values. The two deploy secrets (`NEON_DIRECT_URL`, `RENDER_DEPLOY_HOOK`) are GitHub Actions secrets, used only by the `main`-only jobs.
+CI needs no real secrets: tests mock OpenAI and use throwaway values. The three deploy secrets (`NEON_DIRECT_URL`, `RENDER_DEPLOY_HOOK`, `VERCEL_DEPLOY_HOOK`) are GitHub Actions secrets, used only by the `main`-only jobs.
 
 ## Deployment
 
@@ -257,7 +258,7 @@ CI needs no real secrets: tests mock OpenAI and use throwaway values. The two de
 |---|---|---|
 | Database | Neon, Postgres 16, Singapore | The app uses the pooled connection string, migrations use the direct one |
 | Backend | Render free web service, Docker, Singapore | Build context `./backend`, health check `/health`, auto-deploy off (CD triggers it). Settings: `DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET` |
-| Frontend | Vercel Hobby | Root directory `frontend`, no environment variables; `vercel.json` handles the `/api` rewrite and the SPA fallback |
+| Frontend | Vercel Hobby | Root directory `frontend`, no environment variables; `vercel.json` handles the `/api` rewrite, the SPA fallback, and turns off automatic `main` deploys (the pipeline deploys via a hook) |
 
 The backend and database sit in the same region, since each question makes several database round trips.
 
@@ -265,7 +266,7 @@ The backend and database sit in the same region, since each question makes sever
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `GET` | `/health` | — | Liveness check |
+| `GET` | `/health` | — | Liveness check; also reports the deployed commit |
 | `POST` | `/auth/register` | — | Create an account (`name`, `email`, `password`) |
 | `POST` | `/auth/login` | — | Browser login: sets the session and CSRF cookies, returns the user |
 | `POST` | `/auth/token` | — | Bearer token for tools (OAuth2 password form) |
