@@ -3,7 +3,7 @@ import * as api from "../api/client";
 import type { ApiError, User } from "../types";
 import { useInboxStore } from "./useInboxStore";
 
-type AuthStatus = "checking" | "anonymous" | "authenticated";
+type AuthStatus = "checking" | "anonymous" | "authenticated" | "unreachable";
 
 interface AuthState {
   status: AuthStatus;
@@ -27,13 +27,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   sessionExpired: false,
   isSubmitting: false,
 
-  // the cookie is invisible to us, so the only way to know is to ask the backend
+  // the cookie is invisible to us, so the only way to know is to ask the backend.
+  // only a real answer of "not logged in" means anonymous - if the server can't be
+  // reached (down, or a free-tier instance still waking up) the session may be fine
   checkSession: async () => {
+    set({ status: "checking" });
     try {
       const user = await api.fetchCurrentUser();
       set({ status: "authenticated", user });
-    } catch {
-      set({ status: "anonymous", user: null });
+    } catch (err) {
+      useInboxStore.getState().reset();
+      set({ status: (err as ApiError).unreachable ? "unreachable" : "anonymous", user: null });
     }
   },
 

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { Inbox } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Spinner } from "./Spinner";
@@ -8,8 +9,7 @@ type Mode = "login" | "register";
 const inputClass =
   "w-full bg-surface-sunken border border-border rounded-md px-3.5 py-2.5 text-sm placeholder:text-ink-faint";
 
-export function AuthScreen() {
-  const [mode, setMode] = useState<Mode>("login");
+export function AuthScreen({ mode }: { mode: Mode }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,10 +26,10 @@ export function AuthScreen() {
   const canSubmit =
     email.trim() && password && (!isRegister || (name.trim() && password.length >= 8)) && !isSubmitting;
 
-  const switchMode = () => {
-    setMode(isRegister ? "login" : "register");
+  // a message from the other screen ("invalid email or password") shouldn't follow you here
+  useEffect(() => {
     clearError();
-  };
+  }, [mode, clearError]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -119,9 +119,9 @@ export function AuthScreen() {
 
         <p className="text-center text-sm text-ink-muted mt-5">
           {isRegister ? "Already have an account?" : "New here?"}{" "}
-          <button onClick={switchMode} className="font-semibold text-secondary-ink hover:underline">
+          <Link to={isRegister ? "/login" : "/register"} className="font-semibold text-secondary-ink hover:underline">
             {isRegister ? "Log in" : "Create an account"}
-          </button>
+          </Link>
         </p>
       </div>
     </div>
