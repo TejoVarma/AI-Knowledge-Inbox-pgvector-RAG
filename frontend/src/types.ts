@@ -35,7 +35,7 @@ export interface ApiError {
 
 export interface User {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
   created_at: string;
 }
