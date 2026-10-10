@@ -126,18 +126,28 @@ test.describe("logout and sessions", () => {
   });
 
   test("logging out in one tab expires the session in another", async ({ page, context }) => {
-    await register(page, "Two Tabs", uniqueEmail("tabs"));
+    const email = uniqueEmail("tabs");
+    await register(page, "Two Tabs", email);
     const second = await context.newPage();
     await second.goto("/inbox");
     await expect(second.getByRole("button", { name: "Log out" })).toBeVisible();
 
     await page.getByRole("button", { name: "Log out" }).click();
+    // wait until the logout has really finished - otherwise the save below can beat it to
+    // the server and succeed (a real saved note, and a real openai call)
+    await expect(page).toHaveURL(/\/login$/);
 
     // the second tab still shows the inbox until it next talks to the backend
     await second.getByPlaceholder("Paste a note…").fill("typed after logging out elsewhere");
     await second.getByRole("button", { name: "Save" }).click();
     await expect(second).toHaveURL(/\/login$/);
     await expect(second.getByText("Your session expired. Please log in again.")).toBeVisible();
+
+    // and nothing was saved: log back in and the inbox is still empty
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Log in" }).click();
+    await expect(page.getByText("Nothing saved yet")).toBeVisible();
   });
 
   test("a second user in the same browser sees only their own inbox", async ({ page }) => {
