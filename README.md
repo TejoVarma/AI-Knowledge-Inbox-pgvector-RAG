@@ -293,6 +293,5 @@ The backend and database sit in the same region, since each question makes sever
 - **Usage limits.** There's no per-user daily quota and no rate limiting on login and register yet, so a determined script could create accounts or spend OpenAI credit. Planned: a daily quota per user (an atomic upsert counter) and per-IP limits on the auth routes.
 - **Sessions can't be revoked** before they expire, which is inherent to stateless JWTs. Refresh tokens or a deny-list would fix that.
 - **No email verification or password reset.**
-- **`users.name` is nullable in the database** and only enforced by the API. The column gets tightened to `NOT NULL` in a follow-up migration.
 - **The similarity cut-off (0.45)** can filter out loosely worded questions. It needs tuning, or a low-confidence answer instead of none.
 - **Saving a URL fetches it server-side**, and there's no guard yet against internal addresses (SSRF).
