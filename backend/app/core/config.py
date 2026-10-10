@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     chunk_size_chars: int = 1200
     chunk_overlap_chars: int = 150
     top_k_chunks: int = 4
-    min_similarity: float = 0.45
+    # measured on text-embedding-3-small: related questions scored 0.18-0.60, unrelated ones
+    # -0.04-0.07. 0.45 dropped most real questions; the answer prompt is the second guard
+    min_similarity: float = 0.15
 
     @field_validator("cors_origins")
     @classmethod

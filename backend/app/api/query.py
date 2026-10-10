@@ -1,16 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.logging import get_logger
 from app.db.database import get_db
-from app.db.models import User
+from app.db.models import Item, User
 from app.schemas.query import QueryRequest, QueryResponse, SourceSnippet
 from app.services.answering import generate_answer
 from app.services.retrieval import retrieve_top_chunks
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+EMPTY_INBOX_ANSWER = "I don't have any saved content to answer that yet — add some notes or URLs first."
+NOTHING_RELEVANT_ANSWER = "I couldn't find anything in your saved items about that."
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -21,7 +25,12 @@ def query(
 ) -> QueryResponse:
     try:
         top_chunks = retrieve_top_chunks(db, payload.question, current_user.id)
-        answer = generate_answer(payload.question, top_chunks)
+        if top_chunks:
+            answer = generate_answer(payload.question, top_chunks)
+        else:
+            # "you have nothing saved" and "nothing you saved matches" need different answers
+            has_items = db.scalar(select(Item.id).where(Item.user_id == current_user.id).limit(1))
+            answer = NOTHING_RELEVANT_ANSWER if has_items else EMPTY_INBOX_ANSWER
     except Exception as exc:
         logger.exception("query failed unexpectedly")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="failed to answer question") from exc
