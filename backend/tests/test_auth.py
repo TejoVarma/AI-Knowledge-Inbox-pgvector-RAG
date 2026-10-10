@@ -5,6 +5,7 @@ from datetime import timedelta
 import jwt
 import pytest
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.security import create_access_token, verify_password
 from app.db.database import SessionLocal
@@ -71,6 +72,14 @@ def test_name_is_required(client):
 @pytest.mark.parametrize("name", ["", "   ", "x" * 101])
 def test_blank_or_too_long_name_rejected(client, name):
     assert register(client, name=name).status_code == 422
+
+
+def test_database_refuses_a_user_without_a_name():
+    # the api checks the name, but the column itself must too - nothing else can slip one in
+    with SessionLocal() as db:
+        db.add(User(email="nameless@example.com", password_hash="x"))
+        with pytest.raises(IntegrityError):
+            db.commit()
 
 
 def test_name_is_trimmed(client):

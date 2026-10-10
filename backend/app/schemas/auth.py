@@ -22,7 +22,7 @@ class RegisterRequest(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
-    name: str | None
+    name: str
     email: str
     created_at: datetime
 
