@@ -64,6 +64,8 @@ browser ── HTTPS ───────▶│  static React build            
 
 **Unreachable isn't logged out.** The frontend treats a missing response or an empty 502/503/504 as "server unreachable" (show a retry screen), and only a real 401 as "not logged in". Otherwise a sleeping free-tier backend would bounce everyone to the login page.
 
+**A similarity cut-off chosen from data.** Weak matches are dropped before the answer step. The first value, 0.45, kept only 4 of 9 genuinely related test questions. Measured with `text-embedding-3-small`, related questions scored 0.18–0.60 and unrelated ones −0.04–0.07, so the cut-off is now 0.15. The answer prompt is a second guard: it's told to say there isn't enough information rather than guess. When nothing matches, the reply distinguishes an empty inbox from "nothing you saved is about that".
+
 **Back after logout.** Browsers can restore a frozen copy of a page from their back/forward cache, logged-in content included. The app listens for `pageshow` with `persisted` and re-checks the session when that happens.
 
 ## Project structure
@@ -177,7 +179,7 @@ This still needs a Postgres with pgvector. The Compose `db` service is the easie
 | `JWT_EXPIRE_MINUTES` | no | `1440` | Session length (one day) |
 | `EMBEDDING_MODEL` / `CHAT_MODEL` | no | `text-embedding-3-small` / `gpt-4o-mini` | |
 | `CHUNK_SIZE_CHARS` / `CHUNK_OVERLAP_CHARS` | no | `1200` / `150` | |
-| `TOP_K_CHUNKS` / `MIN_SIMILARITY` | no | `4` / `0.45` | How many chunks feed an answer, and the cosine-similarity cut-off |
+| `TOP_K_CHUNKS` / `MIN_SIMILARITY` | no | `4` / `0.15` | How many chunks feed an answer, and the cosine-similarity cut-off (chosen from measured scores, see below) |
 
 Inside Docker Compose, `backend/compose.env` supplies a `DATABASE_URL` pointing at the `db` service. A `DATABASE_URL` in `backend/.env` overrides it.
 
@@ -287,11 +289,10 @@ The backend and database sit in the same region, since each question makes sever
 - CORS allows no other origins, and the app refuses to start with `"*"`
 - Every query is scoped to the authenticated user
 - Logs carry user ids, never emails, passwords or tokens
+- Saving a URL is protected against server-side request forgery: only http/https on ports 80 and 443, no credentials in the URL, every resolved address must be public (no private, loopback, link-local or cloud-metadata addresses), the connection goes to the exact address that was checked (no DNS rebinding), redirects are followed by hand and re-checked (at most 5), and downloads stop at 2 MB of HTML or plain text
 
 ## Known limitations and next steps
 
 - **Usage limits.** There's no per-user daily quota and no rate limiting on login and register yet, so a determined script could create accounts or spend OpenAI credit. Planned: a daily quota per user (an atomic upsert counter) and per-IP limits on the auth routes.
 - **Sessions can't be revoked** before they expire, which is inherent to stateless JWTs. Refresh tokens or a deny-list would fix that.
 - **No email verification or password reset.**
-- **The similarity cut-off (0.45)** can filter out loosely worded questions. It needs tuning, or a low-confidence answer instead of none.
-- **Saving a URL fetches it server-side**, and there's no guard yet against internal addresses (SSRF).

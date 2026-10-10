@@ -56,3 +56,12 @@ def test_unrelated_question_is_filtered_out(client, monkeypatch):
     resp = client.post("/query", json={"question": "how do I bake bread?"})
     assert resp.status_code == 200
     assert resp.json()["sources"] == []
+
+
+def test_unrelated_question_with_saved_items_says_nothing_matched(client, monkeypatch):
+    client.post("/ingest", json={"source_type": "note", "content": "goa offsite budget"})
+    monkeypatch.setattr("app.services.retrieval.embed_text", lambda q: [-0.1] * 1536)
+
+    data = client.post("/query", json={"question": "how do I bake bread?"}).json()
+    assert data["sources"] == []
+    assert data["answer"] == "I couldn't find anything in your saved items about that."
