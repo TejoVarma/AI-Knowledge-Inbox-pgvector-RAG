@@ -13,7 +13,7 @@ export function InboxScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [mobileTab, setMobileTab] = useState<MobileTab>("save");
-  const displayName = user?.name ?? user?.email ?? "";
+  const displayName = user?.name ?? "";
 
   return (
     <div className="h-screen flex flex-col">
