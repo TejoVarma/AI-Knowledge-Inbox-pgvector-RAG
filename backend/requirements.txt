@@ -1,4 +1,4 @@
-fastapi==0.115.0
+fastapi==0.162.2
 uvicorn[standard]==0.30.6
 sqlalchemy==2.0.35
 psycopg[binary]==3.2.2
@@ -12,5 +12,5 @@ beautifulsoup4==4.12.3
 alembic==1.13.3
 argon2-cffi==23.1.0
 email-validator==2.2.0
-pyjwt==2.9.0
-python-multipart==0.0.12
+pyjwt==2.15.1
+python-multipart==0.0.33

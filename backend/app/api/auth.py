@@ -64,10 +64,10 @@ def token(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     # for /docs, tests and scripts: a bearer token in the body instead of cookies
     if len(form.password) > 128:
         # same cap as LoginRequest, so neither path hashes megabyte-sized "passwords"
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="password too long")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="password too long")
     if len(form.username) > 254:
         # the longest valid email; the username also becomes a rate-limit key kept in memory
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="username too long")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="username too long")
     user = _authenticate(db, form.username.strip().lower(), form.password)
     logger.info("user logged in", extra={"extra_fields": {"user_id": str(user.id), "via": "token"}})
     return TokenResponse(access_token=create_access_token(user.id))

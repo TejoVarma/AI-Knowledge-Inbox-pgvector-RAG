@@ -44,7 +44,7 @@ def ingest_item(
     except UrlFetchError as exc:
         db.rollback()
         logger.warning("url ingestion failed", extra={"extra_fields": {"url": payload.url, "error": str(exc)}})
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
         logger.info("duplicate url ingestion rejected", extra={"extra_fields": {"url": payload.url}})
