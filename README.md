@@ -17,6 +17,7 @@ Under the hood it's a retrieval-augmented generation (RAG) app: saved content is
 - Ask a question and get an answer grounded in your saved items, with cited sources
 - Suggested questions generated for each saved item
 - Every item and every search is scoped to the logged-in user
+- Rate limits and a daily OpenAI budget, so an open signup can't drain the API key
 - Works on desktop and phone widths
 
 ## Tech stack
@@ -28,8 +29,8 @@ Under the hood it's a retrieval-augmented generation (RAG) app: saved content is
 | Database | PostgreSQL 16 + pgvector (HNSW index, cosine distance) |
 | AI | OpenAI `text-embedding-3-small` (embeddings), `gpt-4o-mini` (answers) |
 | Auth | Argon2id password hashing, JWT in an httpOnly cookie, double-submit CSRF token |
-| Testing | pytest (75 tests against real Postgres), Playwright (16 end-to-end browser tests), ruff, oxlint, tsc |
-| Infra | Docker / Docker Compose, GitHub Actions (CI + CD) |
+| Testing | pytest (115 tests against real Postgres), Vitest + Testing Library (6 frontend unit tests), Playwright (16 end-to-end browser tests), ruff, oxlint, tsc, pip-audit |
+| Infra | Docker / Docker Compose, GitHub Actions (CI + CD, pinned runner and actions), Dependabot for monthly upgrade PRs |
 | Hosting | Vercel (frontend), Render (backend, Docker), Neon (Postgres) |
 
 ## Architecture
@@ -65,6 +66,8 @@ browser ── HTTPS ───────▶│  static React build            
 **Unreachable isn't logged out.** The frontend treats a missing response or an empty 502/503/504 as "server unreachable" (show a retry screen), and only a real 401 as "not logged in". Otherwise a sleeping free-tier backend would bounce everyone to the login page.
 
 **A similarity cut-off chosen from data.** Weak matches are dropped before the answer step. The first value, 0.45, kept only 4 of 9 genuinely related test questions. Measured with `text-embedding-3-small`, related questions scored 0.18–0.60 and unrelated ones −0.04–0.07, so the cut-off is now 0.15. The answer prompt is a second guard: it's told to say there isn't enough information rather than guess. When nothing matches, the reply distinguishes an empty inbox from "nothing you saved is about that".
+
+**Rate limits keyed on what the server can trust.** Requests reach Render through Vercel's proxy, so the client IP is either Vercel's own or a forgeable `X-Forwarded-For` entry. Limits are keyed on things the backend can verify instead: the user id for saving and asking (30 and 60 an hour), the email being tried for login (10 per 15 minutes, shared by `/auth/login` and `/auth/token`), and the whole app for signups (30 an hour). On top of that, one daily budget (2000 requests, about two OpenAI calls each) covers everything that spends OpenAI money, and each user can keep up to 200 items. Counters live in memory with a moving window, which is enough for one Render process; they reset when the instance sleeps, and Redis would be the shared store for more than one. The costs: someone can lock an account out for 15 minutes by guessing wrong on purpose, and a crowd of fresh accounts can use up the daily budget and pause the app for everyone until it resets. That protects the bill rather than availability, which is the right way round for a free demo.
 
 **Back after logout.** Browsers can restore a frozen copy of a page from their back/forward cache, logged-in content included. The app listens for `pageshow` with `persisted` and re-checks the session when that happens.
 

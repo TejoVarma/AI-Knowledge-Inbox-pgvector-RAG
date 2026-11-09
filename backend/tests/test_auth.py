@@ -165,7 +165,7 @@ def test_token_signed_with_another_secret_is_rejected(client):
     user_id = client.get(
         "/auth/me", headers=auth_header(get_token(client).json()["access_token"])
     ).json()["id"]
-    forged = jwt.encode({"sub": user_id, "exp": 9999999999}, "attacker-secret", algorithm="HS256")
+    forged = jwt.encode({"sub": user_id, "exp": 9999999999}, "attacker-secret-long-enough-for-hs256-keys", algorithm="HS256")
     assert client.get("/auth/me", headers=auth_header(forged)).status_code == 401
 
 

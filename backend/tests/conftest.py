@@ -58,6 +58,15 @@ def clean_tables():
         conn.execute(text("TRUNCATE users, items, chunks CASCADE"))
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    # counters live in memory for the whole test run; each test starts with none used
+    from app.core.rate_limit import storage
+
+    storage.reset()
+    yield
+
+
 def _new_client() -> TestClient:
     # https, because browsers (and httpx) only send Secure cookies over https
     return TestClient(app, base_url="https://testserver")

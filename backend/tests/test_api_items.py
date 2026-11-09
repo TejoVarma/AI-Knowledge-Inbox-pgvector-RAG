@@ -69,3 +69,16 @@ def test_delete_with_non_uuid_id_rejected(client):
 def test_delete_unknown_uuid_returns_404(client):
     resp = client.delete(f"/items/{uuid.uuid4()}")
     assert resp.status_code == 404
+
+
+def test_oversized_note_rejected_before_any_openai_call(client, monkeypatch):
+    def fail_if_called(pieces):
+        raise AssertionError("embeddings must not be requested for a rejected note")
+
+    monkeypatch.setattr("app.services.ingestion.embed_texts", fail_if_called)
+
+    response = client.post("/ingest", json={"source_type": "note", "content": "a" * 50_001})
+
+    assert response.status_code == 422
+    assert "50000" in response.json()["detail"][0]["msg"]
+    assert client.get("/items").json() == []

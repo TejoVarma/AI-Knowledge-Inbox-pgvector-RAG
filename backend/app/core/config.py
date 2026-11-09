@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     # -0.04-0.07. 0.45 dropped most real questions; the answer prompt is the second guard
     min_similarity: float = 0.15
 
+    # behind the vercel proxy the client ip is either vercel's or forgeable, so limits are
+    # keyed on things the server can trust: the user id, the email being tried, or the app
+    ingest_rate_limit: str = "30 per hour"
+    query_rate_limit: str = "60 per hour"
+    login_rate_limit: str = "10 per 15 minutes"
+    register_rate_limit: str = "30 per hour"
+    # every user together - caps what a crowd of fresh accounts can spend
+    openai_daily_limit: str = "2000 per day"
+    max_items_per_user: int = 200
+
     @field_validator("cors_origins")
     @classmethod
     def reject_wildcard_origin(cls, origins: list[str]) -> list[str]:

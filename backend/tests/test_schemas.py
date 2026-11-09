@@ -50,3 +50,17 @@ def test_question_within_length_limit_passes():
 def test_question_over_length_limit_rejected():
     with pytest.raises(ValidationError):
         QueryRequest(question="a" * 2001)
+
+
+def test_note_at_the_size_limit_passes():
+    IngestRequest(source_type="note", content="a" * 50_000)
+
+
+def test_note_over_the_size_limit_rejected():
+    with pytest.raises(ValidationError):
+        IngestRequest(source_type="note", content="a" * 50_001)
+
+
+def test_url_over_the_size_limit_rejected():
+    with pytest.raises(ValidationError):
+        IngestRequest(source_type="url", url="https://example.com/" + "a" * 2048)
