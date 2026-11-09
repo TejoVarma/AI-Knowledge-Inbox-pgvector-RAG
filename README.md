@@ -30,7 +30,7 @@ Under the hood it's a retrieval-augmented generation (RAG) app: saved content is
 | AI | OpenAI `text-embedding-3-small` (embeddings), `gpt-4o-mini` (answers) |
 | Auth | Argon2id password hashing, JWT in an httpOnly cookie, double-submit CSRF token |
 | Testing | pytest (115 tests against real Postgres), Vitest + Testing Library (6 frontend unit tests), Playwright (16 end-to-end browser tests), ruff, oxlint, tsc, pip-audit |
-| Infra | Docker / Docker Compose, GitHub Actions (CI + CD) |
+| Infra | Docker / Docker Compose, GitHub Actions (CI + CD, pinned runner and actions), Dependabot for monthly upgrade PRs |
 | Hosting | Vercel (frontend), Render (backend, Docker), Neon (Postgres) |
 
 ## Architecture
