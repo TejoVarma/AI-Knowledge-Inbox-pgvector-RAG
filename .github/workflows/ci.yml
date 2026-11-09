@@ -79,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # pnpm first, so setup-node can find it and cache its store
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           package_json_file: frontend/package.json
 
@@ -147,7 +147,7 @@ jobs:
           for i in $(seq 1 30); do curl -sf localhost:8000/health && exit 0; sleep 1; done
           cat ../backend.log; exit 1
 
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           package_json_file: frontend/package.json
 
