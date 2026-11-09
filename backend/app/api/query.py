@@ -3,7 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.rate_limit import enforce
 from app.db.database import get_db
 from app.db.models import Item, User
 from app.schemas.query import QueryRequest, QueryResponse, SourceSnippet
@@ -23,6 +25,9 @@ def query(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> QueryResponse:
+    # outside the try below, which would turn the 429 into a 502
+    enforce(settings.query_rate_limit, "query", str(current_user.id))
+    enforce(settings.openai_daily_limit, "openai")
     try:
         top_chunks = retrieve_top_chunks(db, payload.question, current_user.id)
         if top_chunks:

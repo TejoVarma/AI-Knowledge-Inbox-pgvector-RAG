@@ -1,12 +1,14 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.rate_limit import enforce
 from app.db.database import get_db
 from app.db.models import Item, SourceType, User
 from app.schemas.items import IngestRequest, ItemResponse
@@ -23,6 +25,15 @@ def ingest_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ItemResponse:
+    # all checks sit outside the try below, which would turn them into a 502
+    enforce(settings.ingest_rate_limit, "ingest", str(current_user.id))
+    item_count = db.scalar(select(func.count()).select_from(Item).where(Item.user_id == current_user.id))
+    if item_count >= settings.max_items_per_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"you can keep up to {settings.max_items_per_user} items - delete some to save more",
+        )
+    enforce(settings.openai_daily_limit, "openai")
     try:
         if payload.source_type == SourceType.note:
             item = ingestion.ingest_note(db, current_user.id, content=payload.content)  # type: ignore[arg-type]

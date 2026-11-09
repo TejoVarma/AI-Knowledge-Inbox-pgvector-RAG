@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.rate_limit import enforce
 from app.core.security import (
     ACCESS_COOKIE,
     CSRF_COOKIE,
@@ -26,6 +27,8 @@ logger = get_logger(__name__)
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
+    # signup has no trustworthy per-person key here, so the whole app shares one budget
+    enforce(settings.register_rate_limit, "register")
     user = User(name=payload.name, email=payload.email, password_hash=hash_password(payload.password))
     db.add(user)
     try:
@@ -62,6 +65,9 @@ def token(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     if len(form.password) > 128:
         # same cap as LoginRequest, so neither path hashes megabyte-sized "passwords"
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="password too long")
+    if len(form.username) > 254:
+        # the longest valid email; the username also becomes a rate-limit key kept in memory
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="username too long")
     user = _authenticate(db, form.username.strip().lower(), form.password)
     logger.info("user logged in", extra={"extra_fields": {"user_id": str(user.id), "via": "token"}})
     return TokenResponse(access_token=create_access_token(user.id))
@@ -80,6 +86,8 @@ def me(current_user: User = Depends(get_current_user)) -> User:
 
 
 def _authenticate(db: Session, email: str, password: str) -> User:
+    # counted per account being guessed, before any hashing, and shared by /login and /token
+    enforce(settings.login_rate_limit, "login", email)
     user = db.scalar(select(User).where(User.email == email))
 
     if user is None:
