@@ -12,6 +12,7 @@ export function InboxScreen() {
   const itemCount = useInboxStore((s) => s.items.length);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const logoutError = useAuthStore((s) => s.logoutError);
   const [mobileTab, setMobileTab] = useState<MobileTab>("save");
   const displayName = user?.name ?? "";
 
@@ -44,6 +45,12 @@ export function InboxScreen() {
           </button>
         </div>
       </header>
+
+      {logoutError && (
+        <p role="alert" className="flex-none text-danger text-xs text-center py-2 border-b border-border">
+          {logoutError}
+        </p>
+      )}
 
       <div className="md:hidden flex-none flex border-b border-border">
         {(

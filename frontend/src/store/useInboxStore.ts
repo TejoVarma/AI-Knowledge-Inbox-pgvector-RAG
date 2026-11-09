@@ -80,7 +80,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
       }));
     } catch (err) {
       set((state) => ({
-        itemsError: (err as ApiError).message,
+        itemsError: `Couldn't delete that item: ${(err as ApiError).message}`,
         deletingIds: state.deletingIds.filter((d) => d !== id),
       }));
     }

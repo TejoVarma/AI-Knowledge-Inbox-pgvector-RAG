@@ -12,6 +12,7 @@ export function ItemsList() {
   const items = useInboxStore((s) => s.items);
   const fetchItems = useInboxStore((s) => s.fetchItems);
   const isLoadingItems = useInboxStore((s) => s.isLoadingItems);
+  const itemsError = useInboxStore((s) => s.itemsError);
   const removeItem = useInboxStore((s) => s.removeItem);
   const deletingIds = useInboxStore((s) => s.deletingIds);
 
@@ -47,7 +48,20 @@ export function ItemsList() {
         </div>
       )}
 
-      {!isLoadingItems && items.length === 0 && (
+      {itemsError && (
+        <div
+          role="alert"
+          className="flex-none flex items-center justify-between gap-3 text-sm text-danger border border-danger/30 bg-danger/5 rounded-md px-3 py-2 mb-3"
+        >
+          <span>{itemsError}</span>
+          <button type="button" onClick={fetchItems} className="flex-none font-medium underline">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* after a failed load the list is empty because we don't know, not because nothing is saved */}
+      {!isLoadingItems && !itemsError && items.length === 0 && (
         <p className="text-sm text-ink-faint py-6 text-center">
           Nothing saved yet — add a note or URL to get started.
         </p>

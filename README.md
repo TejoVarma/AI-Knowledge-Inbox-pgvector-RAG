@@ -29,7 +29,7 @@ Under the hood it's a retrieval-augmented generation (RAG) app: saved content is
 | Database | PostgreSQL 16 + pgvector (HNSW index, cosine distance) |
 | AI | OpenAI `text-embedding-3-small` (embeddings), `gpt-4o-mini` (answers) |
 | Auth | Argon2id password hashing, JWT in an httpOnly cookie, double-submit CSRF token |
-| Testing | pytest (75 tests against real Postgres), Playwright (16 end-to-end browser tests), ruff, oxlint, tsc |
+| Testing | pytest (115 tests against real Postgres), Vitest + Testing Library (6 frontend unit tests), Playwright (16 end-to-end browser tests), ruff, oxlint, tsc, pip-audit |
 | Infra | Docker / Docker Compose, GitHub Actions (CI + CD) |
 | Hosting | Vercel (frontend), Render (backend, Docker), Neon (Postgres) |
 

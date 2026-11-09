@@ -9,6 +9,7 @@ interface AuthState {
   status: AuthStatus;
   user: User | null;
   error: string | null;
+  logoutError: string | null;
   sessionExpired: boolean;
   isSubmitting: boolean;
 
@@ -24,6 +25,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   status: "checking",
   user: null,
   error: null,
+  logoutError: null,
   sessionExpired: false,
   isSubmitting: false,
 
@@ -36,8 +38,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = await api.fetchCurrentUser();
       set({ status: "authenticated", user });
     } catch (err) {
+      const { unreachable, status } = err as ApiError;
       useInboxStore.getState().reset();
-      set({ status: (err as ApiError).unreachable ? "unreachable" : "anonymous", user: null });
+      // a 5xx is the server's problem, not proof the session is gone
+      const serverTrouble = unreachable || (status ?? 0) >= 500;
+      set({ status: serverTrouble ? "unreachable" : "anonymous", user: null });
     }
   },
 
@@ -66,12 +71,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    set({ logoutError: null });
     try {
       await api.logout();
-    } finally {
-      useInboxStore.getState().reset();
-      set({ status: "anonymous", user: null, error: null, sessionExpired: false });
+    } catch {
+      // the cookie is cleared by the server; if that didn't happen, showing the login
+      // page would leave the next person at this computer signed in as this user
+      set({ logoutError: "Couldn't log out. Check your connection and try again." });
+      return;
     }
+    useInboxStore.getState().reset();
+    set({ status: "anonymous", user: null, error: null, sessionExpired: false });
   },
 
   expireSession: () => {
