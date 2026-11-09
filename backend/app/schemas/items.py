@@ -4,12 +4,16 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 
 from app.db.models import SourceType
+from app.services.url_fetcher import MAX_CONTENT_CHARS
 
 
 class IngestRequest(BaseModel):
     source_type: SourceType
-    content: str | None = Field(default=None, description="Required when source_type is 'note'")
-    url: str | None = Field(default=None, description="Required when source_type is 'url'")
+    # the same cap a fetched page is cut to; it also keeps every note to one embeddings call
+    content: str | None = Field(
+        default=None, max_length=MAX_CONTENT_CHARS, description="Required when source_type is 'note'"
+    )
+    url: str | None = Field(default=None, max_length=2048, description="Required when source_type is 'url'")
 
     @field_validator("content", "url")
     @classmethod

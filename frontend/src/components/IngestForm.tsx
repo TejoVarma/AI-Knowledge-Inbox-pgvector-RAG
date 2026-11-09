@@ -6,6 +6,8 @@ import { isBareUrl } from "../utils/isBareUrl";
 import type { SourceType } from "../types";
 
 const TAB_ICONS = { note: StickyNote, url: Link2 };
+// matches the backend cap, so a long paste is caught here instead of failing on save
+const MAX_NOTE_CHARS = 50_000;
 
 export function IngestForm() {
   const [sourceType, setSourceType] = useState<SourceType>("note");
@@ -17,6 +19,8 @@ export function IngestForm() {
   const clearSaveError = useInboxStore((s) => s.clearSaveError);
 
   const isBareUrlInNote = sourceType === "note" && isBareUrl(content);
+  const noteLength = content.trim().length;
+  const isNoteTooLong = sourceType === "note" && noteLength > MAX_NOTE_CHARS;
 
   const handleSave = async () => {
     const payload =
@@ -91,6 +95,7 @@ export function IngestForm() {
           disabled={
             isSaving ||
             isBareUrlInNote ||
+            isNoteTooLong ||
             (sourceType === "note" ? !content.trim() : !url.trim())
           }
           className="bg-primary text-white text-sm font-semibold px-5 py-2 rounded-md disabled:opacity-50 hover:opacity-90 transition-opacity inline-flex items-center gap-2"
@@ -103,6 +108,12 @@ export function IngestForm() {
       {isBareUrlInNote && (
         <p className="text-danger text-xs mt-2">
           That's just a URL — switch to the URL tab to save it properly.
+        </p>
+      )}
+      {isNoteTooLong && (
+        <p className="text-danger text-xs mt-2">
+          Too long: {noteLength.toLocaleString()} of {MAX_NOTE_CHARS.toLocaleString()} characters. Split it
+          into smaller notes.
         </p>
       )}
       {saveError && <p className="text-danger text-xs mt-2">{saveError}</p>}
