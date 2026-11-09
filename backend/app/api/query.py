@@ -1,3 +1,4 @@
+import openai
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,6 +11,7 @@ from app.db.database import get_db
 from app.db.models import Item, User
 from app.schemas.query import QueryRequest, QueryResponse, SourceSnippet
 from app.services.answering import generate_answer
+from app.services.openai_client import AI_TIMEOUT_DETAIL
 from app.services.retrieval import retrieve_top_chunks
 
 router = APIRouter()
@@ -36,6 +38,9 @@ def query(
             # "you have nothing saved" and "nothing you saved matches" need different answers
             has_items = db.scalar(select(Item.id).where(Item.user_id == current_user.id).limit(1))
             answer = NOTHING_RELEVANT_ANSWER if has_items else EMPTY_INBOX_ANSWER
+    except openai.APITimeoutError as exc:
+        logger.warning("openai timed out during query")
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=AI_TIMEOUT_DETAIL) from exc
     except Exception as exc:
         logger.exception("query failed unexpectedly")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="failed to answer question") from exc

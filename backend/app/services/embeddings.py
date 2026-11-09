@@ -1,14 +1,11 @@
-from openai import OpenAI
-
 from app.core.config import settings
-
-_client = OpenAI(api_key=settings.openai_api_key)
+from app.services.openai_client import client
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
-    response = _client.embeddings.create(model=settings.embedding_model, input=texts)
+    response = client.embeddings.create(model=settings.embedding_model, input=texts)
     return [item.embedding for item in response.data]
 
 

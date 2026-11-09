@@ -1,9 +1,6 @@
-from openai import OpenAI
-
 from app.core.config import settings
+from app.services.openai_client import client
 from app.services.retrieval import RetrievedChunk
-
-_client = OpenAI(api_key=settings.openai_api_key)
 
 SYSTEM_PROMPT = (
     "You are a knowledge-base assistant. Answer the user's question using ONLY the "
@@ -27,7 +24,7 @@ def generate_answer(question: str, chunks: list[RetrievedChunk]) -> str:
         return "I don't have any saved content to answer that yet — add some notes or URLs first."
 
     context_block = build_context_block(chunks)
-    response = _client.chat.completions.create(
+    response = client.chat.completions.create(
         model=settings.chat_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},

@@ -1,9 +1,9 @@
-from openai import OpenAI
-
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.services.openai_client import client
 
-_client = OpenAI(api_key=settings.openai_api_key)
+# optional extra, so it gets less patience: a slow suggestion shouldn't hold up a save
+_suggestion_client = client.with_options(timeout=8, max_retries=0)
 logger = get_logger(__name__)
 
 SUGGESTION_PROMPT = (
@@ -14,7 +14,7 @@ SUGGESTION_PROMPT = (
 
 def generate_suggested_question(content: str) -> str | None:
     try:
-        response = _client.chat.completions.create(
+        response = _suggestion_client.chat.completions.create(
             model=settings.chat_model,
             messages=[
                 {"role": "system", "content": SUGGESTION_PROMPT},

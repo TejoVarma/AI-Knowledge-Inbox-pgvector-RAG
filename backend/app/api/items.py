@@ -1,5 +1,6 @@
 import uuid
 
+import openai
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +14,7 @@ from app.db.database import get_db
 from app.db.models import Item, SourceType, User
 from app.schemas.items import IngestRequest, ItemResponse
 from app.services import ingestion
+from app.services.openai_client import AI_TIMEOUT_DETAIL
 from app.services.url_fetcher import UrlFetchError
 
 router = APIRouter()
@@ -49,6 +51,10 @@ def ingest_item(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="this url has already been saved"
         ) from exc
+    except openai.APITimeoutError as exc:
+        db.rollback()
+        logger.warning("openai timed out during ingestion")
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=AI_TIMEOUT_DETAIL) from exc
     except Exception as exc:
         db.rollback()
         logger.exception("ingestion failed unexpectedly")
